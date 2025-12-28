@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Compareon",
+  "version": "1.0.0",
+  "description": "AI-powered product comparison tool. Compare products across the web with intelligent insights.",
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "*://*.amazon.com/*",
+    "*://*.amazon.ca/*",
+    "*://*.amazon.co.uk/*",
+    "*://*.amazon.in/*",
+    "https://nriroots-production.up.railway.app/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.amazon.com/*",
+        "*://*.amazon.ca/*",
+        "*://*.amazon.co.uk/*",
+        "*://*.amazon.in/*"
+      ],
+      "js": ["config.js", "amazon.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "heart_comparion.png",
+    "48": "heart_comparion.png",
+    "128": "heart_comparion.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "heart_comparion.png",
+      "48": "heart_comparion.png",
+      "128": "heart_comparion.png"
+    },
+    "default_title": "Compareon - Product Comparison"
+  }
+}

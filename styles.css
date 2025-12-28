@@ -1,0 +1,40 @@
+/* Styles for the Compare button */
+
+.compare-extension-button {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  background: #4A90E2;
+  border-color: #3A7BC8;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 90px;
+}
+
+.compare-extension-button:hover {
+  background: #3A7BC8;
+  border-color: #2E69B0;
+}
+
+.compare-extension-button:active {
+  background: #2E69B0;
+  border-color: #1F5A9A;
+}
+
+.compare-extension-button .a-button-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+.compare-extension-button .a-button-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+}
+
+/* Ensure button is visible */
+#compare-button-extension {
+  display: block !important;
+  position: relative;
+}
