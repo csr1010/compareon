@@ -36,6 +36,50 @@ function initializeBadge() {
   });
 }
 
+// Listen for messages from content script and external domains
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  // Only allow messages from compareon.xyz
+  if (!sender.url || !sender.url.includes('compareon.xyz')) {
+    sendResponse({ success: false, error: 'Unauthorized' });
+    return;
+  }
+
+  if (request.action === 'getProducts') {
+    // Return active products from chrome.storage.local
+    chrome.storage.local.get(['comparison_items', 'browser_uuid'], (result) => {
+      const items = result.comparison_items || [];
+      const activeItems = items.filter(item => item.status === 'active');
+      sendResponse({ 
+        success: true, 
+        products: activeItems,
+        sessionId: result.browser_uuid 
+      });
+    });
+    return true; // Keep channel open for async response
+  } else if (request.action === 'removeProduct') {
+    // Mark product as removed (soft delete)
+    const productId = request.product_id;
+    chrome.storage.local.get(['comparison_items'], (result) => {
+      const items = result.comparison_items || [];
+      const updatedItems = items.map(item => {
+        if (item.product_id === productId) {
+          return { ...item, status: 'removed', removedAt: new Date().toISOString() };
+        }
+        return item;
+      });
+      
+      chrome.storage.local.set({ comparison_items: updatedItems }, () => {
+        const activeCount = updatedItems.filter(item => item.status === 'active').length;
+        updateBadge(activeCount);
+        sendResponse({ success: true, count: activeCount });
+      });
+    });
+    return true; // Keep channel open for async response
+  }
+  
+  sendResponse({ success: false, error: 'Unknown action' });
+});
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'updateBadge') {
@@ -44,70 +88,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'initializeBadge') {
     initializeBadge();
     sendResponse({ success: true });
-  } else if (request.action === 'callCompareAPI') {
-    // Handle API call to avoid CORS issues
-    handleCompareAPICall(request.payload)
-      .then(data => sendResponse({ success: true, data: data }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true; // Keep channel open for async response
-  } else if (request.action === 'addToCompare') {
-    // Handle add to compare API call
-    handleAddToCompare(request.payload)
-      .then(data => sendResponse({ success: true, data: data }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true; // Keep channel open for async response
   }
   return true;
 });
 
-// Handle API call
-async function handleCompareAPICall(payload) {
-  const API_ENDPOINT = 'https://nriroots-production.up.railway.app/api/compare';
-  
-  try {
-    const response = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
+// Helper function to get active products count
+function getActiveProductsCount() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['comparison_items'], (result) => {
+      const items = result.comparison_items || [];
+      const activeItems = items.filter(item => item.status === 'active');
+      resolve(activeItems.length);
     });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
-  }
-}
-
-// Handle add to compare API call
-async function handleAddToCompare(payload) {
-  const API_ENDPOINT = 'https://nriroots-production.up.railway.app/api/compare/addtocompare';
-  
-  try {
-    const response = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Add to compare API call failed:', error);
-    throw error;
-  }
+  });
 }
 
 // Initialize badge immediately

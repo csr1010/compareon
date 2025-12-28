@@ -28,12 +28,40 @@ const ComparisonManager = {
   async addItem(product) {
     const items = await this.getItems();
     
+    // Add status and timestamp to product
+    product.status = 'active';
+    product.addedAt = new Date().toISOString();
+    
     // Check if product_id already exists
     const existingIndex = items.findIndex(item => item.product_id === product.product_id);
     
     if (existingIndex !== -1) {
-      // Replace the existing product with the new one
-      items[existingIndex] = product;
+      const existingProduct = items[existingIndex];
+      
+      // If product was previously removed, reactivate it
+      if (existingProduct.status === 'removed') {
+        items[existingIndex] = { ...product, reactivatedAt: new Date().toISOString() };
+        
+        return new Promise((resolve) => {
+          try {
+            chrome.storage.local.set({ [this.STORAGE_KEY]: items }, () => {
+              if (chrome.runtime.lastError) {
+                console.error('Extension context invalidated:', chrome.runtime.lastError);
+                resolve({ success: false, message: 'Extension was reloaded. Please refresh the page.' });
+                return;
+              }
+              const activeCount = items.filter(item => item.status === 'active').length;
+              resolve({ success: true, message: 'Product reactivated in comparison', count: activeCount, isReactivated: true });
+            });
+          } catch (error) {
+            console.error('Error reactivating item:', error);
+            resolve({ success: false, message: 'Failed to reactivate product. Please refresh the page.' });
+          }
+        });
+      }
+      
+      // Update existing active product
+      items[existingIndex] = { ...product, updatedAt: new Date().toISOString() };
       
       return new Promise((resolve) => {
         try {
@@ -43,7 +71,8 @@ const ComparisonManager = {
               resolve({ success: false, message: 'Extension was reloaded. Please refresh the page.' });
               return;
             }
-            resolve({ success: true, message: 'Product updated in comparison', count: items.length, isReplaced: true });
+            const activeCount = items.filter(item => item.status === 'active').length;
+            resolve({ success: true, message: 'Product updated in comparison', count: activeCount, isReplaced: true });
           });
         } catch (error) {
           console.error('Error updating item:', error);
@@ -52,8 +81,9 @@ const ComparisonManager = {
       });
     }
     
-    // Check limit
-    if (items.length >= this.MAX_ITEMS) {
+    // Check limit for active items only
+    const activeItems = items.filter(item => item.status === 'active');
+    if (activeItems.length >= this.MAX_ITEMS) {
       return { success: false, message: `Maximum ${this.MAX_ITEMS} items can be compared`, isLimitReached: true };
     }
     
@@ -67,7 +97,8 @@ const ComparisonManager = {
             resolve({ success: false, message: 'Extension was reloaded. Please refresh the page.' });
             return;
           }
-          resolve({ success: true, message: 'Product added to comparison', count: items.length });
+          const activeCount = items.filter(item => item.status === 'active').length;
+          resolve({ success: true, message: 'Product added to comparison', count: activeCount });
         });
       } catch (error) {
         console.error('Error adding item:', error);
@@ -76,19 +107,27 @@ const ComparisonManager = {
     });
   },
 
-  async removeItem(url) {
+  async removeItem(productId) {
     const items = await this.getItems();
-    const filtered = items.filter(item => item.url !== url);
+    
+    // Soft delete: mark as removed instead of deleting
+    const updatedItems = items.map(item => {
+      if (item.product_id === productId) {
+        return { ...item, status: 'removed', removedAt: new Date().toISOString() };
+      }
+      return item;
+    });
     
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.set({ [this.STORAGE_KEY]: filtered }, () => {
+        chrome.storage.local.set({ [this.STORAGE_KEY]: updatedItems }, () => {
           if (chrome.runtime.lastError) {
             console.error('Extension context invalidated:', chrome.runtime.lastError);
             resolve({ success: false, count: 0 });
             return;
           }
-          resolve({ success: true, count: filtered.length });
+          const activeCount = updatedItems.filter(item => item.status === 'active').length;
+          resolve({ success: true, count: activeCount });
         });
       } catch (error) {
         console.error('Error removing item:', error);

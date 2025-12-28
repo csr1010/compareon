@@ -13,8 +13,7 @@
     "*://*.amazon.com/*",
     "*://*.amazon.ca/*",
     "*://*.amazon.co.uk/*",
-    "*://*.amazon.in/*",
-    "https://nriroots-production.up.railway.app/*"
+    "*://*.amazon.in/*"
   ],
   "content_scripts": [
     {
@@ -42,5 +41,14 @@
       "128": "heart_comparion.png"
     },
     "default_title": "Compareon - Product Comparison"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://compareon.xyz/*",
+      "https://*.compareon.xyz/*"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }
