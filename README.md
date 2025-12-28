@@ -97,6 +97,8 @@ If you installed from source and want to update to the latest version:
 
 Have questions or feedback? We'd love to hear from you!
 
+**Contact:** admin@findzo.ai
+
 ---
 
 **Version 1.0.0** - Making online shopping smarter, one comparison at a time.
