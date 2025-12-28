@@ -55,7 +55,7 @@ Compareon helps you compare products from across the web intelligently. Add prod
 **Method A: Clone from Git**
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/compareon.git
+   git clone https://github.com/csr1010/compareon.git
    cd compareon
    ```
 
