@@ -45,13 +45,12 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   }
 
   if (request.action === 'getProducts') {
-    // Return active products from chrome.storage.local
+    // Return all products from chrome.storage.local
     chrome.storage.local.get(['comparison_items', 'browser_uuid'], (result) => {
       const items = result.comparison_items || [];
-      const activeItems = items.filter(item => item.status === 'active');
       sendResponse({ 
         success: true, 
-        products: activeItems,
+        products: items,
         sessionId: result.browser_uuid 
       });
     });
