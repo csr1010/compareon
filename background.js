@@ -4,7 +4,8 @@
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'local' && changes.comparison_items) {
     const items = changes.comparison_items.newValue || [];
-    updateBadge(items.length);
+    const activeCount = items.filter(item => item.status === 'active').length;
+    updateBadge(activeCount);
   }
 });
 
@@ -32,7 +33,8 @@ chrome.runtime.onInstalled.addListener(() => {
 function initializeBadge() {
   chrome.storage.local.get(['comparison_items'], (result) => {
     const items = result.comparison_items || [];
-    updateBadge(items.length);
+    const activeCount = items.filter(item => item.status === 'active').length;
+    updateBadge(activeCount);
   });
 }
 

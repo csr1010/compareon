@@ -742,7 +742,7 @@ const AmazonExtractor = {
       title: title,
       price: price,
       rating: rating,
-      reviewsCount: reviewsCount,
+      totalReviews: reviewsCount,
       image: image,
       url: productUrl,
       product_id: product_id,

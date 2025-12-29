@@ -19,12 +19,23 @@ async function getBrowserUUID() {
   });
 }
 
-// Load products from local storage only
+// Load products from local storage only (read-only, no modifications)
 async function loadProductsFromStorage() {
   const items = await loadComparisonItems();
-  // Filter to show only active products
+  
+  // Filter to show only active products (don't modify storage)
   comparisonItems = items.filter(item => item.status === 'active');
-  Logger.log('Loaded active products:', comparisonItems.length);
+  
+  Logger.log('Total items in storage:', items.length);
+  Logger.log('Active products to display:', comparisonItems.length);
+  Logger.log('Removed products (hidden):', items.filter(item => item.status === 'removed').length);
+  
+  // Update badge to reflect active count
+  chrome.runtime.sendMessage({ 
+    action: 'updateBadge', 
+    count: comparisonItems.length 
+  });
+  
   renderProductList();
 }
 
@@ -133,7 +144,7 @@ function renderProductList() {
     details.appendChild(title);
     
     // Add rating and reviews below title
-    if (product.rating || product.reviewsCount || product.totalReviews) {
+    if (product.rating || product.totalReviews) {
       const meta = document.createElement('p');
       meta.className = 'product-meta';
       const parts = [];
@@ -142,9 +153,8 @@ function renderProductList() {
         parts.push(`⭐ ${product.rating}`);
       }
       
-      const reviews = product.totalReviews || product.reviewsCount;
-      if (reviews) {
-        parts.push(`${reviews} reviews`);
+      if (product.totalReviews) {
+        parts.push(`${product.totalReviews} reviews`);
       }
       
       meta.textContent = parts.join(' • ');

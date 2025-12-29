@@ -6,9 +6,6 @@ const Config = {
   // Logging control
   DEBUG_MODE: false, // Set to true to enable all logging, false to disable
   
-  // API endpoints
-  API_BASE_URL: 'https://nriroots-production.up.railway.app/api/compare',
-  
   // Limits
   MAX_COMPARISON_ITEMS: 5,
   
