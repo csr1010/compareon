@@ -143,10 +143,17 @@ const ComparisonManager = {
 function detectRetailer() {
   const hostname = window.location.hostname;
   
-  if (Config.isAllowedDomain(hostname)) {
+  if (hostname.includes('amazon.com') || hostname.includes('amazon.ca') || 
+      hostname.includes('amazon.co.uk') || hostname.includes('amazon.in')) {
     Logger.log('🏪 Retailer detected: Amazon');
     Logger.log('🔧 AmazonExtractor available:', !!window.AmazonExtractor);
     return window.AmazonExtractor;
+  }
+  
+  if (hostname.includes('zillow.com')) {
+    Logger.log('🏪 Retailer detected: Zillow');
+    Logger.log('🔧 ZillowExtractor available:', !!window.ZillowExtractor);
+    return window.ZillowExtractor;
   }
   
   // Add more retailer detection here in the future
@@ -295,8 +302,15 @@ function insertCompareButtons() {
     
     // Insert button based on insertion point type
     try {
-      if (insertionPoint.parentNode) {
-        // Insert as next sibling of the insertion point
+      // Detect if this is Zillow (buttons are absolutely positioned within container)
+      const isZillow = window.location.hostname.includes('zillow.com');
+      
+      if (isZillow && productContainer) {
+        // For Zillow: append button directly to product container (absolute positioning)
+        productContainer.appendChild(compareButton);
+        Logger.log(`  ✅ Button appended to container for ASIN: ${asin}`);
+      } else if (insertionPoint.parentNode) {
+        // For other retailers: Insert as next sibling of the insertion point
         insertionPoint.parentNode.insertBefore(compareButton, insertionPoint.nextSibling);
         Logger.log(`  ✅ Button inserted for ASIN: ${asin}`);
       } else if (insertionPoint.appendChild) {
@@ -328,14 +342,35 @@ function insertCompareButtons() {
 // Run when page loads
 insertCompareButtons();
 
-// Watch for dynamic content changes
+// Watch for dynamic content changes with debouncing and throttling
+let mutationTimeout;
+let lastRun = 0;
+const DEBOUNCE_DELAY = 300; // Wait 300ms after last mutation
+const THROTTLE_DELAY = 1000; // Don't run more than once per second
+
 const observer = new MutationObserver(() => {
-  insertCompareButtons();
+  clearTimeout(mutationTimeout);
+  
+  mutationTimeout = setTimeout(() => {
+    const now = Date.now();
+    // Throttle: ensure at least 1 second between runs
+    if (now - lastRun >= THROTTLE_DELAY) {
+      lastRun = now;
+      insertCompareButtons();
+    }
+  }, DEBOUNCE_DELAY);
 });
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true
-});
+// Only observe if we're on a product listing page
+const extractor = detectRetailer();
+if (extractor && extractor.isProductListPage()) {
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  Logger.log('🔍 MutationObserver active (debounced: 300ms, throttled: 1s)');
+} else {
+  Logger.log('⏭️ Not a listing page, skipping MutationObserver');
+}
 
 Logger.log('🚀 Compareon Extension loaded');

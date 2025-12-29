@@ -13,7 +13,8 @@
     "*://*.amazon.com/*",
     "*://*.amazon.ca/*",
     "*://*.amazon.co.uk/*",
-    "*://*.amazon.in/*"
+    "*://*.amazon.in/*",
+    "*://*.zillow.com/*"
   ],
   "content_scripts": [
     {
@@ -24,6 +25,14 @@
         "*://*.amazon.in/*"
       ],
       "js": ["config.js", "amazon.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.zillow.com/*"
+      ],
+      "js": ["config.js", "zillow.js", "content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }

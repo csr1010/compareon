@@ -4,7 +4,7 @@
 
 const Config = {
   // Logging control
-  DEBUG_MODE: false, // Set to true to enable all logging, false to disable
+  DEBUG_MODE: true, // Set to true to enable all logging, false to disable
   
   // Limits
   MAX_COMPARISON_ITEMS: 5,
@@ -22,6 +22,7 @@ const Config = {
     'amazon.ca',
     'amazon.co.uk',
     'amazon.in',
+    'zillow.com',
     // Add more domains here as needed
   ],
   

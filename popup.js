@@ -50,6 +50,9 @@ async function openComparisonPage() {
     // Get or create browser UUID
     const browserUUID = await getBrowserUUID();
     
+    // Detect retailer from products (use first product's retailer)
+    const retailer = comparisonItems[0]?.retailer || 'unknown';
+    
     // Store session data locally
     const sessionData = {
       sessionId: browserUUID,
@@ -64,9 +67,10 @@ async function openComparisonPage() {
       Logger.log('Session created and stored locally:', sessionData);
       Logger.log(`✅ Opening comparison page`);
       Logger.log(`📋 Session ID: ${browserUUID}`);
+      Logger.log(`🏪 Retailer: ${retailer}`);
       
-      // Open comparison page with session ID
-      const comparisonUrl = Config.getComparisonUrl(browserUUID);
+      // Open comparison page with session ID and ref parameter
+      const comparisonUrl = `${Config.getComparisonUrl(browserUUID)}?ref=${retailer}`;
       chrome.tabs.create({ url: comparisonUrl });
     });
 
