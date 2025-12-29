@@ -4,7 +4,8 @@
   "version": "1.0.1",
   "description": "AI-powered product comparison tool. Compare products across the web with intelligent insights.",
   "permissions": [
-    "storage"
+    "storage",
+    "scripting"
   ],
   "background": {
     "service_worker": "background.js"

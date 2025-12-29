@@ -239,10 +239,223 @@ window.ZillowExtractor = {
   extractFromDetailPage() {
     Logger.log('📦 Extracting property from detail page');
     
-    // Detail page extraction can be implemented later if needed
-    // For now, return null as Zillow detail pages have different structure
-    Logger.warn('Detail page extraction not yet implemented for Zillow');
-    return null;
+    // Extract zpid from URL
+    const zpidMatch = window.location.pathname.match(/\/(\d+)_zpid/);
+    if (!zpidMatch) {
+      Logger.error('Could not extract zpid from URL');
+      return null;
+    }
+    const zpid = zpidMatch[1];
+    
+    // Extract address and price from home-info
+    let address = '';
+    let price = '';
+    
+    const homeInfoContainer = document.querySelector('[data-testid="home-info"]');
+    if (homeInfoContainer) {
+      const addressElement = homeInfoContainer.querySelector('h1');
+      if (addressElement) {
+        address = addressElement.textContent.trim();
+      }
+    }
+    
+    // Extract price from data-testid="price"
+    const priceElement = document.querySelector('[data-testid="price"]');
+    if (priceElement) {
+      price = priceElement.textContent.trim();
+    }
+    
+    // Fallback for address and price
+    if (!address) {
+      const addressElement = document.querySelector('h1[data-test="property-address"]') || document.querySelector('h1');
+      address = addressElement ? addressElement.textContent.trim() : '';
+    }
+    if (!price) {
+      const fallbackPrice = document.querySelector('[data-test="property-price"]');
+      price = fallbackPrice ? fallbackPrice.textContent.trim() : '';
+    }
+    
+    // Extract beds, baths, sqft from bed-bath-sqft
+    let beds = '';
+    let baths = '';
+    let sqft = '';
+    
+    const bedBathContainer = document.querySelector('[data-testid="mobile-bed-bath-sqft"]') ||
+                            document.querySelector('[data-testid="desktop-bed-bath-sqft"]');
+    if (bedBathContainer) {
+      const text = bedBathContainer.textContent;
+      Logger.log('🛏️ Bed/Bath/Sqft text:', text);
+      
+      const bedMatch = text.match(/(\d+)\s*(?:bd|bed|bedroom)/i);
+      const bathMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:ba|bath|bathroom)/i);
+      const sqftMatch = text.match(/([\d,]+)\s*(?:sqft|sq\s*ft)/i);
+      
+      if (bedMatch) beds = bedMatch[1];
+      if (bathMatch) baths = bathMatch[1];
+      if (sqftMatch) sqft = sqftMatch[1].replace(/,/g, '');
+    }
+    
+    // Extract property details from "At a glance"
+    let yearBuilt = '';
+    let lotSize = '';
+    let parking = '';
+    let heating = '';
+    let cooling = '';
+    
+    const glanceContainer = document.querySelector('[data-testid="at-a-glance"]');
+    if (glanceContainer) {
+      const factsText = glanceContainer.textContent;
+      Logger.log('📊 At a glance text:', factsText);
+      
+      const yearMatch = factsText.match(/Year Built[:\s]*([\d,]+)/i) || 
+                       factsText.match(/Built in\s*([\d,]+)/i);
+      const lotMatch = factsText.match(/Lot[:\s]*([\d,\.]+\s*(?:acres?|sq\s*ft))/i);
+      const parkingMatch = factsText.match(/Parking[:\s]*([^\n]+?)(?:\n|$)/i);
+      const heatingMatch = factsText.match(/Heating[:\s]*([^\n]+?)(?:\n|$)/i);
+      const coolingMatch = factsText.match(/Cooling[:\s]*([^\n]+?)(?:\n|$)/i);
+      
+      if (yearMatch) yearBuilt = yearMatch[1];
+      if (lotMatch) lotSize = lotMatch[1];
+      if (parkingMatch) parking = parkingMatch[1].trim();
+      if (heatingMatch) heating = heatingMatch[1].trim();
+      if (coolingMatch) cooling = coolingMatch[1].trim();
+    }
+    
+    // Extract description
+    let description = '';
+    const descriptionElement = document.querySelector('[data-testid="description"]');
+    if (descriptionElement) {
+      const fullDesc = descriptionElement.textContent.trim();
+      description = fullDesc.length > 200 ? fullDesc.substring(0, 200) + '...' : fullDesc;
+    }
+    
+    // Extract social stats from StyledOverviewStats
+    let daysOnZillow = '';
+    let views = '';
+    let saves = '';
+    
+    const statsContainers = Array.from(document.querySelectorAll('[class*="StyledOverviewStats"]'));
+    for (const container of statsContainers) {
+      const statsText = container.textContent.trim();
+      
+      const daysMatch = statsText.match(/(\d+)\s*days?\s*on\s*Zillow/i);
+      const viewsMatch = statsText.match(/([\d,]+)\s*views?/i);
+      const savesMatch = statsText.match(/(\d+)\s*saves?/i);
+      
+      if (daysMatch) daysOnZillow = daysMatch[1];
+      if (viewsMatch) views = viewsMatch[1].replace(/,/g, '');
+      if (savesMatch) saves = savesMatch[1];
+      
+      if (daysOnZillow || views || saves) break; // Found stats, stop looking
+    }
+    
+    // Extract estimated monthly payment
+    let estimatedMonthly = '';
+    const paymentModule = document.querySelector('[data-testid="chip-personalize-payment-module"]');
+    if (paymentModule) {
+      const paymentText = paymentModule.textContent;
+      const paymentMatch = paymentText.match(/\$[\d,]+/);
+      if (paymentMatch) {
+        estimatedMonthly = paymentMatch[0];
+      }
+    }
+    
+    // Extract nearby schools
+    let nearbySchools = '';
+    const inlineContainers = document.querySelectorAll('[data-renderstrat="inline"]');
+    
+    for (const container of inlineContainers) {
+      const h2 = container.querySelector('h2');
+      if (h2 && h2.textContent.trim() === 'Nearby schools') {
+        const schools = [];
+        
+        // Try to find school elements within this container
+        const schoolElements = container.querySelectorAll('li, [class*="school"]');
+        
+        schoolElements.forEach((schoolEl, index) => {
+          if (index >= 3) return; // Only top 3 schools
+          
+          const text = schoolEl.textContent.trim();
+          if (!text || text === 'Nearby schools') return;
+          
+          // Try to extract school name and rating
+          const ratingMatch = text.match(/(\d+)\/10/);
+          const rating = ratingMatch ? ratingMatch[1] : '';
+          
+          // Get school name (text before rating or distance info)
+          let schoolName = text.split(/\d+\/10/)[0].trim();
+          schoolName = schoolName.split(/\d+\.\d+\s*mi/)[0].trim();
+          schoolName = schoolName.replace(/^\d+\.\s*/, ''); // Remove numbering like "1. "
+          
+          if (schoolName && schoolName.length > 3) {
+            schools.push(rating ? `${schoolName} (${rating}/10)` : schoolName);
+          }
+        });
+        
+        if (schools.length > 0) {
+          nearbySchools = schools.join(', ');
+        }
+        break;
+      }
+    }
+    
+    // Extract images
+    const images = [];
+    const imageElements = document.querySelectorAll('[data-test="property-photo"] img, [class*="MediaCarousel"] img, picture img');
+    imageElements.forEach(img => {
+      const src = img.src || img.getAttribute('data-src');
+      if (src && !src.includes('data:image') && !images.includes(src)) {
+        images.push(src);
+      }
+    });
+    
+    // Extract property URL
+    const propertyUrl = window.location.href.split('?')[0]; // Remove query params
+    
+    const product = {
+      product_id: zpid,
+      title: address,
+      price: price,
+      image: images[0] || '',
+      propertyLink: propertyUrl,
+      retailer: 'zillow',
+      address: address,
+      beds: beds,
+      baths: baths,
+      sqft: sqft,
+      images: images,
+      extractedAt: new Date().toISOString(),
+      extractedFrom: 'detail-page',
+      // Additional detail page fields
+      description: description,
+      yearBuilt: yearBuilt,
+      lotSize: lotSize,
+      parking: parking,
+      heating: heating,
+      cooling: cooling,
+      daysOnZillow: daysOnZillow,
+      views: views,
+      saves: saves,
+      estimatedMonthly: estimatedMonthly,
+      nearbySchools: nearbySchools
+    };
+    
+    Logger.log('✅ Property extracted from detail page:', {
+      id: zpid,
+      address: address.substring(0, 50),
+      price: price,
+      beds: beds,
+      baths: baths,
+      sqft: sqft,
+      images: images.length,
+      yearBuilt: yearBuilt,
+      description: description ? 'Yes' : 'No',
+      stats: `${daysOnZillow} days, ${views} views, ${saves} saves`,
+      estimatedMonthly: estimatedMonthly,
+      schools: nearbySchools ? 'Yes' : 'No'
+    });
+    
+    return product;
   },
 
   // ============================================
@@ -260,12 +473,59 @@ window.ZillowExtractor = {
     button._productContainer = productContainer;
     button._productMetadata = metadata;
     
-    // Add click handler with event propagation prevention
+    // Add click handler with two-phase extraction
     button.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      clickHandler(button);
+      
+      // Phase 1: Extract basic data from card immediately
+      const product = window.ZillowExtractor.extractFromListingPage(productContainer);
+      
+      if (product) {
+        // Add to storage immediately
+        chrome.storage.local.get(['comparison_items'], (result) => {
+          const items = result.comparison_items || [];
+          
+          product.status = 'active';
+          product.addedAt = new Date().toISOString();
+          
+          const existingIndex = items.findIndex(item => item.product_id === product.product_id);
+          
+          if (existingIndex !== -1) {
+            items[existingIndex] = { ...product, updatedAt: new Date().toISOString() };
+          } else {
+            const activeItems = items.filter(item => item.status === 'active');
+            if (activeItems.length >= 5) {
+              alert('Maximum 5 items can be compared');
+              return;
+            }
+            items.push(product);
+          }
+          
+          chrome.storage.local.set({ comparison_items: items }, () => {
+            const activeCount = items.filter(item => item.status === 'active').length;
+            
+            // Update badge
+            chrome.runtime.sendMessage({ action: 'updateBadge', count: activeCount });
+            
+            // Phase 2: Fetch additional details in background
+            const linkElement = productContainer.querySelector('[data-test="property-card-title-link"]');
+            if (linkElement) {
+              const href = linkElement.getAttribute('href');
+              const fullUrl = href?.startsWith('http') ? href : `https://www.zillow.com${href}`;
+              
+              Logger.log('🔄 Fetching additional details in background:', fullUrl);
+              
+              chrome.runtime.sendMessage({
+                action: 'fetchPropertyDetails',
+                url: fullUrl,
+                productId: product.product_id
+              });
+            }
+          });
+        });
+      }
     }, true); // Use capture phase
     
     // Add Zillow-specific styling with absolute positioning
